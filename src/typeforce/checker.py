@@ -4,17 +4,12 @@ from __future__ import annotations
 import ast
 import re
 from pathlib import Path
-from typing import Sequence
+from typing import ClassVar, Sequence
 
 from typeforce.config import TypeforceConfig
 from typeforce.errors import TypeforceError
 from typeforce.rules import RULES
 from typeforce.rules.base import Rule
-
-# Matches:  # typeforce: ignore  or  # typeforce: ignore[TF001,TF002]
-_INLINE_IGNORE_RE = re.compile(
-    r"#\s*typeforce:\s*ignore(?:\[([A-Z0-9,\s]+)\])?"
-)
 
 
 class TypeforceChecker(ast.NodeVisitor):
@@ -25,6 +20,10 @@ class TypeforceChecker(ast.NodeVisitor):
     each ``visit()`` call only invokes rules that declared interest in
     that node type.
     """
+
+    _INLINE_IGNORE_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"#\s*typeforce:\s*ignore(?:\[([A-Z0-9,\s]+)\])?"
+    )
 
     class _ScopeStack:
         """Tracks whether the current node is inside a class body."""
@@ -62,6 +61,9 @@ class TypeforceChecker(ast.NodeVisitor):
         self._scope = self._ScopeStack()
         self._dispatch = self._build_dispatch(rules if rules is not None else RULES)
 
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
 
     @classmethod
     def from_file(
@@ -79,6 +81,7 @@ class TypeforceChecker(ast.NodeVisitor):
         self.visit(tree)
         return list(self._errors)
 
+    # ------------------------------------------------------------------
     # Visitor
     # ------------------------------------------------------------------
 
@@ -110,7 +113,7 @@ class TypeforceChecker(ast.NodeVisitor):
         """
         suppressed: dict[int, set[str]] = {}
         for lineno, line in enumerate(source_lines, start=1):
-            match = _INLINE_IGNORE_RE.search(line)
+            match = TypeforceChecker._INLINE_IGNORE_RE.search(line)
             if match is None:
                 continue
             codes_str = match.group(1)

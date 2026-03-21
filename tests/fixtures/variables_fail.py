@@ -5,6 +5,7 @@ a = 3                    # TF001
 result = get_data()      # TF001
 name = "Alice"           # TF001
 items = []               # TF001
+a, b = some_tuple()     # TF001 TF001
 
 # These should NOT trigger TF001:
 b: int = 5               # ok
