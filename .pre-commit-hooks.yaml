@@ -1,5 +1,5 @@
-- id: typeforce
-  name: typeforce
+- id: typestrict
+  name: typestrict
   description: Enforce type annotation presence in Python code
   entry: typestrict check --fail-on-error
   language: python
