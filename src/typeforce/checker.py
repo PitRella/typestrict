@@ -8,15 +8,8 @@ from typing import Sequence
 
 from typeforce.config import TypeforceConfig
 from typeforce.errors import TypeforceError
-from typeforce.rules.classes import ClassAnnotationRule
-from typeforce.rules.functions import FunctionAnnotationRule
-from typeforce.rules.loops import LoopAnnotationRule
-from typeforce.rules.variables import VariableAnnotationRule
-
-_variable_rule = VariableAnnotationRule()
-_function_rule = FunctionAnnotationRule()
-_class_rule = ClassAnnotationRule()
-_loop_rule = LoopAnnotationRule()
+from typeforce.rules import RULES
+from typeforce.rules.base import Rule
 
 # Matches:  # typeforce: ignore  or  # typeforce: ignore[TF001,TF002]
 _INLINE_IGNORE_RE = re.compile(
@@ -36,10 +29,7 @@ def _parse_inline_ignores(source_lines: list[str]) -> dict[int, set[str]]:
         if match is None:
             continue
         codes_str = match.group(1)
-        if codes_str:
-            codes = {c.strip() for c in codes_str.split(",") if c.strip()}
-        else:
-            codes = set()  # empty == suppress everything
+        codes = {c.strip() for c in codes_str.split(",") if c.strip()} if codes_str else set()
         suppressed[lineno] = codes
     return suppressed
 
@@ -62,7 +52,13 @@ class _ScopeStack:
 
 
 class TypeforceChecker(ast.NodeVisitor):
-    """Walk an AST and collect all typeforce rule violations."""
+    """Walk an AST and collect all typeforce rule violations.
+
+    Rules are discovered automatically from the ``RULES`` registry.
+    The checker builds a dispatch table keyed by AST node type so that
+    each ``visit()`` call only invokes rules that declared interest in
+    that node type.
+    """
 
     def __init__(
         self,
@@ -70,6 +66,7 @@ class TypeforceChecker(ast.NodeVisitor):
         filename: str,
         config: TypeforceConfig,
         selected_rules: Sequence[str] | None = None,
+        rules: list[Rule] | None = None,
     ) -> None:
         self._filename = filename
         self._config = config
@@ -81,6 +78,7 @@ class TypeforceChecker(ast.NodeVisitor):
             source.splitlines()
         )
         self._scope = _ScopeStack()
+        self._dispatch = self._build_dispatch(rules if rules is not None else RULES)
 
     # ------------------------------------------------------------------
     # Public interface
@@ -104,51 +102,44 @@ class TypeforceChecker(ast.NodeVisitor):
         return list(self._errors)
 
     # ------------------------------------------------------------------
-    # Visitor methods
+    # Visitor
     # ------------------------------------------------------------------
 
-    def visit_Assign(self, node: ast.Assign) -> None:
-        """TF001 – plain variable assignment without annotation."""
-        if not self._scope.inside_class:
-            for error in _variable_rule.check(node, self._filename):
-                self._record(error)
-        self.generic_visit(node)
+    def visit(self, node: ast.AST) -> None:
+        """Dispatch *node* to matching rules, then recurse into children.
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-        """TF002 / TF003 – function argument and return annotations."""
-        for error in _function_rule.check(node, self._filename):
-            self._record(error)
-        self.generic_visit(node)
-
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-        """TF002 / TF003 – async function argument and return annotations."""
-        for error in _function_rule.check(node, self._filename):
-            self._record(error)
-        self.generic_visit(node)
-
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        """TF004 – class attribute assignments without annotations."""
-        for error in _class_rule.check(node, self._filename):
-            self._record(error)
-        self._scope.enter_class()
-        self.generic_visit(node)
-        self._scope.leave_class()
-
-    def visit_For(self, node: ast.For) -> None:
-        """TF005 – loop variable without annotation."""
-        for error in _loop_rule.check(node, self._filename):
-            self._record(error)
-        self.generic_visit(node)
-
-    def visit_With(self, node: ast.With) -> None:
-        """TF005 – context-manager variable without annotation."""
-        for error in _loop_rule.check(node, self._filename):
-            self._record(error)
-        self.generic_visit(node)
+        ``ast.ClassDef`` is handled specially so that ``_ScopeStack``
+        stays accurate while its body is visited.
+        """
+        if isinstance(node, ast.ClassDef):
+            self._apply_rules(node)
+            self._scope.enter_class()
+            self.generic_visit(node)
+            self._scope.leave_class()
+        else:
+            self._apply_rules(node)
+            self.generic_visit(node)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_dispatch(rules: list[Rule]) -> dict[type[ast.AST], list[Rule]]:
+        """Build a ``{NodeType: [rules]}`` table from the rule list."""
+        dispatch: dict[type[ast.AST], list[Rule]] = {}
+        for rule in rules:
+            for node_type in rule.node_types:
+                dispatch.setdefault(node_type, []).append(rule)
+        return dispatch
+
+    def _apply_rules(self, node: ast.AST) -> None:
+        """Run every rule registered for this node type."""
+        for rule in self._dispatch.get(type(node), []):
+            if rule.skip_in_class_body and self._scope.inside_class:
+                continue
+            for error in rule.check(node, self._filename):
+                self._record(error)
 
     def _record(self, error: TypeforceError) -> None:
         """Apply all filters and append the error if it should be reported."""
@@ -159,7 +150,6 @@ class TypeforceChecker(ast.NodeVisitor):
         self._errors.append(error)
 
     def _is_rule_active(self, code: str) -> bool:
-        """Return True if the rule should be checked at all."""
         if self._selected_rules is not None and code not in self._selected_rules:
             return False
         if self._config.is_rule_ignored(code, self._filename):
@@ -167,11 +157,9 @@ class TypeforceChecker(ast.NodeVisitor):
         return True
 
     def _is_inline_suppressed(self, lineno: int, code: str) -> bool:
-        """Return True if an inline comment suppresses this error."""
         ignored = self._inline_ignores.get(lineno)
         if ignored is None:
             return False
-        # Empty set == suppress everything on this line
         return len(ignored) == 0 or code in ignored
 
 
@@ -188,7 +176,6 @@ def check_source(
     try:
         tree = ast.parse(source, filename=filename)
     except SyntaxError as exc:
-        # Return a synthetic error rather than crashing
         return [
             TypeforceError(
                 file=filename,
