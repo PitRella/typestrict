@@ -28,15 +28,17 @@ class LoopAnnotationRule(Rule):
     """TF005 – loop and context-manager variable without type annotation."""
 
     code: ClassVar[str] = "TF005"
-    node_types: ClassVar[tuple[type[ast.AST], ...]] = (ast.For, ast.With)
+    node_types: ClassVar[tuple[type[ast.AST], ...]] = (
+        ast.For, ast.AsyncFor, ast.With, ast.AsyncWith
+    )
 
     def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
-        assert isinstance(node, (ast.For, ast.With))
-        if isinstance(node, ast.For):
+        assert isinstance(node, (ast.For, ast.AsyncFor, ast.With, ast.AsyncWith))
+        if isinstance(node, (ast.For, ast.AsyncFor)):
             return self._check_for(node, filename)
         return self._check_with(node, filename)
 
-    def _check_for(self, node: ast.For, filename: str) -> list[TypeforceError]:
+    def _check_for(self, node: ast.For | ast.AsyncFor, filename: str) -> list[TypeforceError]:
         """Check ``for <target> in …`` for TF005 violations.
 
         Because Python's ``for`` loop syntax does not support inline
@@ -59,7 +61,7 @@ class LoopAnnotationRule(Rule):
             )
         return errors
 
-    def _check_with(self, node: ast.With, filename: str) -> list[TypeforceError]:
+    def _check_with(self, node: ast.With | ast.AsyncWith, filename: str) -> list[TypeforceError]:
         """Check ``with … as <target>`` for TF005 violations."""
         errors: list[TypeforceError] = []
         for item in node.items:

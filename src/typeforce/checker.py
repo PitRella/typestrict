@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import ast
+import io
 import re
+import tokenize
 from pathlib import Path
 from typing import ClassVar, Sequence
 
@@ -66,7 +68,7 @@ class TypeforceChecker(ast.NodeVisitor):
             frozenset(selected_rules) if selected_rules is not None else None
         )
         self._errors: list[TypeforceError] = []
-        self._inline_ignores: dict[int, set[str]] = self._parse_inline_ignores(source.splitlines())
+        self._inline_ignores: dict[int, set[str]] = self._parse_inline_ignores(source)
         self._scope: TypeforceChecker._ScopeStack = self._ScopeStack()
         self._dispatch: dict[type[ast.AST], list[Rule]] = self._build_dispatch(
             rules if rules is not None else RULES
@@ -116,20 +118,32 @@ class TypeforceChecker(ast.NodeVisitor):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _parse_inline_ignores(source_lines: list[str]) -> dict[int, set[str]]:
+    def _parse_inline_ignores(source: str) -> dict[int, set[str]]:
         """Return ``{1-based line: set of suppressed codes}`` for the source.
 
+        Uses the tokenizer to find only real comment tokens, so patterns
+        inside string literals are never matched.
         An empty set means *all* codes are suppressed on that line
         (bare ``# typeforce: ignore``).
         """
         suppressed: dict[int, set[str]] = {}
-        for lineno, line in enumerate(source_lines, start=1):
-            match = TypeforceChecker._INLINE_IGNORE_RE.search(line)
-            if match is None:
-                continue
-            codes_str = match.group(1)
-            codes = {c.strip() for c in codes_str.split(",") if c.strip()} if codes_str else set()
-            suppressed[lineno] = codes
+        try:
+            tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+            for tok_type, tok_string, tok_start, _, _ in tokens:
+                if tok_type != tokenize.COMMENT:
+                    continue
+                lineno: int = tok_start[0]
+                match = TypeforceChecker._INLINE_IGNORE_RE.search(tok_string)
+                if match is None:
+                    continue
+                codes_str = match.group(1)
+                codes = (
+                    {c.strip() for c in codes_str.split(",") if c.strip()}
+                    if codes_str else set()
+                )
+                suppressed[lineno] = codes
+        except tokenize.TokenError:
+            pass  # Syntax errors are handled separately by ast.parse
         return suppressed
 
     @staticmethod
