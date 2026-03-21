@@ -25,10 +25,19 @@ class TypeforceChecker(ast.NodeVisitor):
         r"#\s*typeforce:\s*ignore(?:\[([A-Z0-9,\s]+)\])?"
     )
 
+    # Instance attribute declarations (assigned in __init__)
+    _filename: str
+    _config: TypeforceConfig
+    _selected_rules: frozenset[str] | None
+    _errors: list[TypeforceError]
+    _inline_ignores: dict[int, set[str]]
+    _scope: "_ScopeStack"
+    _dispatch: dict[type[ast.AST], list[Rule]]
+
     class _ScopeStack:
         """Tracks whether the current node is inside a class body."""
 
-        __slots__ = ("_depth",)
+        __slots__: tuple[str, ...] = ("_depth",)
 
         def __init__(self) -> None:
             self._depth: int = 0
@@ -51,15 +60,17 @@ class TypeforceChecker(ast.NodeVisitor):
         selected_rules: Sequence[str] | None = None,
         rules: list[Rule] | None = None,
     ) -> None:
-        self._filename = filename
-        self._config = config
+        self._filename: str = filename
+        self._config: TypeforceConfig = config
         self._selected_rules: frozenset[str] | None = (
             frozenset(selected_rules) if selected_rules is not None else None
         )
         self._errors: list[TypeforceError] = []
-        self._inline_ignores = self._parse_inline_ignores(source.splitlines())
-        self._scope = self._ScopeStack()
-        self._dispatch = self._build_dispatch(rules if rules is not None else RULES)
+        self._inline_ignores: dict[int, set[str]] = self._parse_inline_ignores(source.splitlines())
+        self._scope: TypeforceChecker._ScopeStack = self._ScopeStack()
+        self._dispatch: dict[type[ast.AST], list[Rule]] = self._build_dispatch(
+            rules if rules is not None else RULES
+        )
 
     # ------------------------------------------------------------------
     # Public interface
@@ -169,7 +180,7 @@ def check_source(
     This is the primary programmatic API.
     """
     try:
-        tree = ast.parse(source, filename=filename)
+        tree: ast.AST = ast.parse(source, filename=filename)
     except SyntaxError as exc:
         return [
             TypeforceError(
@@ -191,7 +202,7 @@ def check_file(
 ) -> list[TypeforceError]:
     """Read *path* from disk and return all typeforce errors."""
     try:
-        source = path.read_text(encoding="utf-8")
+        source: str = path.read_text(encoding="utf-8")
     except OSError as exc:
         return [
             TypeforceError(

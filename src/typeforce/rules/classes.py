@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+from typing import ClassVar
 
 from typeforce.errors import TypeforceError
 from typeforce.rules.base import Rule
@@ -17,8 +18,8 @@ def _get_self_name(init_node: ast.FunctionDef) -> str | None:
 class ClassAnnotationRule(Rule):
     """TF004 – class attribute assignments without type annotations."""
 
-    code = "TF004"
-    node_types = (ast.ClassDef,)
+    code: ClassVar[str] = "TF004"
+    node_types: ClassVar[tuple[type[ast.AST], ...]] = (ast.ClassDef,)
 
     def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
         assert isinstance(node, ast.ClassDef)
