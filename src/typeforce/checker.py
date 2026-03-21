@@ -74,10 +74,6 @@ class TypeforceChecker(ast.NodeVisitor):
             rules if rules is not None else RULES
         )
 
-    # ------------------------------------------------------------------
-    # Public interface
-    # ------------------------------------------------------------------
-
     @classmethod
     def from_file(
         cls,
@@ -94,10 +90,6 @@ class TypeforceChecker(ast.NodeVisitor):
         self.visit(tree)
         return list(self._errors)
 
-    # ------------------------------------------------------------------
-    # Visitor
-    # ------------------------------------------------------------------
-
     def visit(self, node: ast.AST) -> None:
         """Dispatch *node* to matching rules, then recurse into children.
 
@@ -112,10 +104,6 @@ class TypeforceChecker(ast.NodeVisitor):
         else:
             self._apply_rules(node)
             self.generic_visit(node)
-
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _parse_inline_ignores(source: str) -> dict[int, set[str]]:
