@@ -6,6 +6,7 @@ removing ``TF005`` from the ``ignore`` list in ``[tool.typeforce]``.
 from __future__ import annotations
 
 import ast
+from typing import ClassVar
 
 from typeforce.errors import TypeforceError
 from typeforce.rules.base import Rule
@@ -26,8 +27,8 @@ def _target_names(target: ast.expr) -> list[str]:
 class LoopAnnotationRule(Rule):
     """TF005 – loop and context-manager variable without type annotation."""
 
-    code = "TF005"
-    node_types = (ast.For, ast.With)
+    code: ClassVar[str] = "TF005"
+    node_types: ClassVar[tuple[type[ast.AST], ...]] = (ast.For, ast.With)
 
     def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
         assert isinstance(node, (ast.For, ast.With))

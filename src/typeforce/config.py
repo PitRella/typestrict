@@ -4,18 +4,15 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import ClassVar, TypedDict
+from typing import Any, ClassVar, TypedDict
 
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
+try:
+    import tomllib  # type: ignore[import-not-found]
+except ImportError:
     try:
-        import tomllib  # type: ignore[no-redef]
+        import tomli as tomllib
     except ImportError:
-        try:
-            import tomli as tomllib  # type: ignore[no-redef]
-        except ImportError:
-            tomllib = None  # type: ignore[assignment]
+        tomllib: Any = None  # type: ignore[no-redef]
 
 
 class _TomlSection(TypedDict, total=False):

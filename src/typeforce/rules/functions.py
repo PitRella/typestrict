@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+from typing import ClassVar
 
 from typeforce.errors import TypeforceError
 from typeforce.rules.base import Rule
@@ -19,8 +20,8 @@ def _is_method(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
 class FunctionAnnotationRule(Rule):
     """TF002 / TF003 – function argument and return-type annotations."""
 
-    code = "TF002"  # primary code; TF003 is also emitted
-    node_types = (ast.FunctionDef, ast.AsyncFunctionDef)
+    code: ClassVar[str] = "TF002"  # primary code; TF003 is also emitted
+    node_types: ClassVar[tuple[type[ast.AST], ...]] = (ast.FunctionDef, ast.AsyncFunctionDef)
 
     def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
         assert isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))

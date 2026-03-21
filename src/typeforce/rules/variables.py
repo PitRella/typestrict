@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+from typing import ClassVar
 
 from typeforce.errors import TypeforceError
 from typeforce.rules.base import Rule
@@ -33,9 +34,9 @@ def _collect_names(target: ast.expr) -> list[str]:
 class VariableAnnotationRule(Rule):
     """TF001 – plain variable assignment without annotation."""
 
-    code = "TF001"
-    node_types = (ast.Assign,)
-    skip_in_class_body = True
+    code: ClassVar[str] = "TF001"
+    node_types: ClassVar[tuple[type[ast.AST], ...]] = (ast.Assign,)
+    skip_in_class_body: ClassVar[bool] = True
 
     def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
         assert isinstance(node, ast.Assign)

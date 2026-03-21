@@ -24,13 +24,16 @@ class Runner:
         "json": JsonFormatter,
     }
 
+    _config: TypeforceConfig
+    _selected_rules: list[str] | None
+
     def __init__(
         self,
         config: TypeforceConfig,
         selected_rules: list[str] | None = None,
     ) -> None:
-        self._config = config
-        self._selected_rules = selected_rules
+        self._config: TypeforceConfig = config
+        self._selected_rules: list[str] | None = selected_rules
 
     def collect_files(self, paths: Sequence[Path]) -> list[Path]:
         """Recursively collect ``.py`` files under *paths*, respecting exclusions."""
@@ -110,11 +113,12 @@ def check_command(
     config_path: Path | None,
 ) -> None:
     """Check one or more files/directories for missing type annotations."""
-    config = TypeforceConfig.from_pyproject(config_path)
-    selected_rules = [r.strip() for r in select.split(",") if r.strip()] if select else None
-
-    runner = Runner(config, selected_rules)
-    errors = runner.run(paths)
+    config: TypeforceConfig = TypeforceConfig.from_pyproject(config_path)
+    selected_rules: list[str] | None = (
+        [r.strip() for r in select.split(",") if r.strip()] if select else None
+    )
+    runner: Runner = Runner(config, selected_rules)
+    errors: list[TypeforceError] = runner.run(paths)
 
     click.echo(runner.formatter(output_format).format(errors))
 
