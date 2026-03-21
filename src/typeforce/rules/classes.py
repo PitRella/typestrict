@@ -2,10 +2,18 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 from typing import ClassVar
 
 from typeforce.errors import TypeforceError
 from typeforce.rules.base import Rule
+
+# Node types that introduce a new scope — we stop descending into these.
+_SCOPE_NODES: tuple[type[ast.AST], ...] = (
+    ast.FunctionDef,
+    ast.AsyncFunctionDef,
+    ast.ClassDef,
+)
 
 
 def _get_self_name(init_node: ast.FunctionDef) -> str | None:
@@ -13,6 +21,20 @@ def _get_self_name(init_node: ast.FunctionDef) -> str | None:
     if init_node.args.args:
         return init_node.args.args[0].arg
     return None
+
+
+def _walk_no_nested_scopes(node: ast.AST) -> Iterator[ast.AST]:
+    """Yield descendant nodes, but do not descend into nested scopes.
+
+    Unlike ``ast.walk()``, this stops at ``FunctionDef``, ``AsyncFunctionDef``,
+    and ``ClassDef`` so that assignments inside nested functions are not
+    mistakenly attributed to the outer ``__init__``.
+    """
+    yield node
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, _SCOPE_NODES):
+            continue
+        yield from _walk_no_nested_scopes(child)
 
 
 class ClassAnnotationRule(Rule):
@@ -61,13 +83,17 @@ class ClassAnnotationRule(Rule):
         init_node: ast.FunctionDef,
         filename: str,
     ) -> list[TypeforceError]:
-        """Check ``self.attr = value`` patterns in ``__init__``."""
+        """Check ``self.attr = value`` patterns in ``__init__``.
+
+        Uses ``_walk_no_nested_scopes`` so that assignments inside nested
+        functions/classes are not falsely attributed to this ``__init__``.
+        """
         errors: list[TypeforceError] = []
-        self_name = _get_self_name(init_node)
+        self_name: str | None = _get_self_name(init_node)
         if self_name is None:
             return errors
 
-        for stmt in ast.walk(init_node):
+        for stmt in _walk_no_nested_scopes(init_node):
             if not isinstance(stmt, ast.Assign):
                 continue
             for target in stmt.targets:

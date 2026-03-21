@@ -18,11 +18,14 @@ def _collect_names(target: ast.expr) -> list[str]:
     """Recursively collect variable names from an assignment target.
 
     Handles simple names (``x``), tuple/list unpacking (``a, b = …``),
-    and nested unpacking (``(a, (b, c)) = …``).
+    nested unpacking (``(a, (b, c)) = …``), and starred targets
+    (``a, *rest, c = …``).
     Attribute targets (``obj.attr``) are ignored – handled by TF004.
     """
     if isinstance(target, ast.Name):
         return [target.id]
+    if isinstance(target, ast.Starred):
+        return _collect_names(target.value)
     if isinstance(target, (ast.Tuple, ast.List)):
         names: list[str] = []
         for elt in target.elts:

@@ -102,3 +102,27 @@ class TestTF004Specifics:
         source = "class C:\n    x = 1\n"
         errors = check_source(source, "<test>", config)
         assert errors == []
+
+    def test_nested_function_in_init_not_flagged(self) -> None:
+        # self.attr inside a nested function should NOT be attributed to __init__
+        source = (
+            "class C:\n"
+            "    def __init__(self) -> None:\n"
+            "        def helper() -> None:\n"
+            "            self.x = 1\n"  # nested scope — should not be flagged
+            "        helper()\n"
+        )
+        errors = _check(source, ["TF004"])
+        assert errors == []
+
+    def test_self_assign_inside_if_flagged(self) -> None:
+        # Assignment inside an if-block in __init__ SHOULD still be flagged
+        source = (
+            "class C:\n"
+            "    def __init__(self, flag: bool) -> None:\n"
+            "        if flag:\n"
+            "            self.x = 1\n"
+        )
+        errors = _check(source, ["TF004"])
+        assert len(errors) == 1
+        assert "self.x" in errors[0].message

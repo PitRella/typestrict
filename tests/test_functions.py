@@ -122,3 +122,25 @@ class TestTF003ReturnType:
         source = "def f(): pass  # typeforce: ignore[TF003]\n"
         errors = _check(source, ["TF003"])
         assert errors == []
+
+
+class TestPositionalOnlyArgs:
+    """Edge cases for positional-only parameters (PEP 570)."""
+
+    def test_posonly_unannotated_flagged(self) -> None:
+        errors = _check("def f(x, /, y: int) -> None: pass\n", ["TF002"])
+        assert len(errors) == 1
+        assert "x" in errors[0].message
+
+    def test_posonly_annotated_passes(self) -> None:
+        errors = _check("def f(x: int, /, y: int) -> None: pass\n", ["TF002"])
+        assert errors == []
+
+    def test_posonly_self_skipped_in_method(self) -> None:
+        # self as positional-only is unusual but valid: def method(self, /, x)
+        source = (
+            "class C:\n"
+            "    def method(self, /, x: int) -> None: pass\n"
+        )
+        errors = _check(source, ["TF002"])
+        assert errors == []

@@ -107,3 +107,17 @@ class TestTF001Specifics:
         )
         errors = check_source("x = 1\n", "<test>", config)
         assert errors == []
+
+    def test_starred_unpack_flagged(self) -> None:
+        errors = self._check("a, *rest, c = func()\n")
+        assert len(errors) == 3
+        names = {e.message for e in errors}
+        assert any("'a'" in m for m in names)
+        assert any("'rest'" in m for m in names)
+        assert any("'c'" in m for m in names)
+
+    def test_inline_ignore_inside_string_not_suppressed(self) -> None:
+        # The pattern inside a string literal must NOT suppress the TF001 error
+        errors = self._check('x = "# typeforce: ignore"\n')
+        assert len(errors) == 1
+        assert errors[0].code == "TF001"
