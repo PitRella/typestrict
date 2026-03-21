@@ -14,14 +14,21 @@ def _is_dunder_name(name: str) -> bool:
     return name.startswith(_DUNDER_PREFIX) and name.endswith(_DUNDER_PREFIX)
 
 
-def _is_simple_name_target(target: ast.expr) -> tuple[bool, str]:
-    """Return (is_simple_name, variable_name) for an assignment target.
+def _collect_names(target: ast.expr) -> list[str]:
+    """Recursively collect variable names from an assignment target.
 
-    Returns (False, "") for tuple-unpacking or other complex targets.
+    Handles simple names (``x``), tuple/list unpacking (``a, b = …``),
+    and nested unpacking (``(a, (b, c)) = …``).
+    Attribute targets (``obj.attr``) are ignored – handled by TF004.
     """
     if isinstance(target, ast.Name):
-        return True, target.id
-    return False, ""
+        return [target.id]
+    if isinstance(target, (ast.Tuple, ast.List)):
+        names: list[str] = []
+        for elt in target.elts:
+            names.extend(_collect_names(elt))
+        return names
+    return []
 
 
 def check_assignment(
@@ -33,30 +40,27 @@ def check_assignment(
     Rules:
     - Skip dunder names (``__all__``, ``__version__``, …)
     - Skip ``_ = …`` (unused value convention)
-    - Skip tuple-unpacking targets (``a, b = func()``)
+    - Flag all names in tuple-unpacking targets (``a, b = func()``)
     - ``ast.AugAssign`` nodes (``x += 1``) are never passed here; the caller
       is responsible for filtering those out.
     """
     errors: list[TypeforceError] = []
 
     for target in node.targets:
-        is_simple, name = _is_simple_name_target(target)
-        if not is_simple:
-            # Tuple unpacking – skip
-            continue
-        if name == "_":
-            continue
-        if _is_dunder_name(name):
-            continue
+        for name in _collect_names(target):
+            if name == "_":
+                continue
+            if _is_dunder_name(name):
+                continue
 
-        errors.append(
-            TypeforceError(
-                file=filename,
-                line=node.lineno,
-                col=node.col_offset,
-                code=_RULE_CODE,
-                message=f"Variable '{name}' missing type annotation",
+            errors.append(
+                TypeforceError(
+                    file=filename,
+                    line=node.lineno,
+                    col=node.col_offset,
+                    code=_RULE_CODE,
+                    message=f"Variable '{name}' missing type annotation",
+                )
             )
-        )
 
     return errors
