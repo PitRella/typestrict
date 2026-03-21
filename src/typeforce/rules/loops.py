@@ -8,8 +8,7 @@ from __future__ import annotations
 import ast
 
 from typeforce.errors import TypeforceError
-
-_RULE_CODE: str = "TF005"
+from typeforce.rules.base import Rule
 
 
 def _target_names(target: ast.expr) -> list[str]:
@@ -24,39 +23,28 @@ def _target_names(target: ast.expr) -> list[str]:
     return []
 
 
-def check_loop(node: ast.For, filename: str) -> list[TypeforceError]:
-    """Check ``for <target> in …`` for TF005 violations.
+class LoopAnnotationRule(Rule):
+    """TF005 – loop and context-manager variable without type annotation."""
 
-    Because Python's ``for`` loop syntax does not support inline annotations
-    (``for x: int in …`` is a SyntaxError), every loop variable is flagged.
-    The rule is opt-in for teams that use the ``# type: …`` comment convention.
-    """
-    errors: list[TypeforceError] = []
+    code = "TF005"
+    node_types = (ast.For, ast.With)
 
-    for name in _target_names(node.target):
-        if name == "_":
-            continue
-        errors.append(
-            TypeforceError(
-                file=filename,
-                line=node.lineno,
-                col=node.col_offset,
-                code=_RULE_CODE,
-                message=f"Loop variable '{name}' missing type annotation",
-            )
-        )
+    def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
+        assert isinstance(node, (ast.For, ast.With))
+        if isinstance(node, ast.For):
+            return self._check_for(node, filename)
+        return self._check_with(node, filename)
 
-    return errors
+    def _check_for(self, node: ast.For, filename: str) -> list[TypeforceError]:
+        """Check ``for <target> in …`` for TF005 violations.
 
-
-def check_with(node: ast.With, filename: str) -> list[TypeforceError]:
-    """Check ``with … as <target>`` for TF005 violations."""
-    errors: list[TypeforceError] = []
-
-    for item in node.items:
-        if item.optional_vars is None:
-            continue
-        for name in _target_names(item.optional_vars):
+        Because Python's ``for`` loop syntax does not support inline
+        annotations (``for x: int in …`` is a SyntaxError), every loop
+        variable is flagged. The rule is opt-in for teams that use the
+        ``# type: …`` comment convention.
+        """
+        errors: list[TypeforceError] = []
+        for name in _target_names(node.target):
             if name == "_":
                 continue
             errors.append(
@@ -64,9 +52,28 @@ def check_with(node: ast.With, filename: str) -> list[TypeforceError]:
                     file=filename,
                     line=node.lineno,
                     col=node.col_offset,
-                    code=_RULE_CODE,
-                    message=f"Context variable '{name}' missing type annotation",
+                    code=self.code,
+                    message=f"Loop variable '{name}' missing type annotation",
                 )
             )
+        return errors
 
-    return errors
+    def _check_with(self, node: ast.With, filename: str) -> list[TypeforceError]:
+        """Check ``with … as <target>`` for TF005 violations."""
+        errors: list[TypeforceError] = []
+        for item in node.items:
+            if item.optional_vars is None:
+                continue
+            for name in _target_names(item.optional_vars):
+                if name == "_":
+                    continue
+                errors.append(
+                    TypeforceError(
+                        file=filename,
+                        line=node.lineno,
+                        col=node.col_offset,
+                        code=self.code,
+                        message=f"Context variable '{name}' missing type annotation",
+                    )
+                )
+        return errors

@@ -4,9 +4,10 @@ from __future__ import annotations
 import json
 
 from typeforce.errors import TypeforceError
+from typeforce.formatters.base import BaseFormatter
 
 
-class JsonFormatter:
+class JsonFormatter(BaseFormatter):
     """Format errors as a JSON array."""
 
     def format(self, errors: list[TypeforceError]) -> str:
