@@ -17,40 +17,6 @@ _INLINE_IGNORE_RE = re.compile(
 )
 
 
-def _parse_inline_ignores(source_lines: list[str]) -> dict[int, set[str]]:
-    """Return a mapping of {1-based line number -> set of ignored codes}.
-
-    An empty set means *all* codes are suppressed on that line
-    (bare ``# typeforce: ignore``).
-    """
-    suppressed: dict[int, set[str]] = {}
-    for lineno, line in enumerate(source_lines, start=1):
-        match = _INLINE_IGNORE_RE.search(line)
-        if match is None:
-            continue
-        codes_str = match.group(1)
-        codes = {c.strip() for c in codes_str.split(",") if c.strip()} if codes_str else set()
-        suppressed[lineno] = codes
-    return suppressed
-
-
-class _ScopeStack:
-    """Lightweight stack that tracks whether we are inside a class."""
-
-    def __init__(self) -> None:
-        self._class_depth: int = 0
-
-    def enter_class(self) -> None:
-        self._class_depth += 1
-
-    def leave_class(self) -> None:
-        self._class_depth -= 1
-
-    @property
-    def inside_class(self) -> bool:
-        return self._class_depth > 0
-
-
 class TypeforceChecker(ast.NodeVisitor):
     """Walk an AST and collect all typeforce rule violations.
 
@@ -59,6 +25,24 @@ class TypeforceChecker(ast.NodeVisitor):
     each ``visit()`` call only invokes rules that declared interest in
     that node type.
     """
+
+    class _ScopeStack:
+        """Tracks whether the current node is inside a class body."""
+
+        __slots__ = ("_depth",)
+
+        def __init__(self) -> None:
+            self._depth: int = 0
+
+        def enter(self) -> None:
+            self._depth += 1
+
+        def leave(self) -> None:
+            self._depth -= 1
+
+        @property
+        def inside_class(self) -> bool:
+            return self._depth > 0
 
     def __init__(
         self,
@@ -74,15 +58,10 @@ class TypeforceChecker(ast.NodeVisitor):
             frozenset(selected_rules) if selected_rules is not None else None
         )
         self._errors: list[TypeforceError] = []
-        self._inline_ignores: dict[int, set[str]] = _parse_inline_ignores(
-            source.splitlines()
-        )
-        self._scope = _ScopeStack()
+        self._inline_ignores = self._parse_inline_ignores(source.splitlines())
+        self._scope = self._ScopeStack()
         self._dispatch = self._build_dispatch(rules if rules is not None else RULES)
 
-    # ------------------------------------------------------------------
-    # Public interface
-    # ------------------------------------------------------------------
 
     @classmethod
     def from_file(
@@ -90,10 +69,9 @@ class TypeforceChecker(ast.NodeVisitor):
         path: Path,
         config: TypeforceConfig,
         selected_rules: Sequence[str] | None = None,
-    ) -> "TypeforceChecker":
+    ) -> TypeforceChecker:
         """Construct a checker by reading *path* from disk."""
-        source = path.read_text(encoding="utf-8")
-        return cls(source, str(path), config, selected_rules)
+        return cls(path.read_text(encoding="utf-8"), str(path), config, selected_rules)
 
     def run(self, tree: ast.AST) -> list[TypeforceError]:
         """Walk *tree* and return all collected errors."""
@@ -101,7 +79,6 @@ class TypeforceChecker(ast.NodeVisitor):
         self.visit(tree)
         return list(self._errors)
 
-    # ------------------------------------------------------------------
     # Visitor
     # ------------------------------------------------------------------
 
@@ -113,16 +90,33 @@ class TypeforceChecker(ast.NodeVisitor):
         """
         if isinstance(node, ast.ClassDef):
             self._apply_rules(node)
-            self._scope.enter_class()
+            self._scope.enter()
             self.generic_visit(node)
-            self._scope.leave_class()
+            self._scope.leave()
         else:
             self._apply_rules(node)
             self.generic_visit(node)
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Private helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_inline_ignores(source_lines: list[str]) -> dict[int, set[str]]:
+        """Return ``{1-based line: set of suppressed codes}`` for the source.
+
+        An empty set means *all* codes are suppressed on that line
+        (bare ``# typeforce: ignore``).
+        """
+        suppressed: dict[int, set[str]] = {}
+        for lineno, line in enumerate(source_lines, start=1):
+            match = _INLINE_IGNORE_RE.search(line)
+            if match is None:
+                continue
+            codes_str = match.group(1)
+            codes = {c.strip() for c in codes_str.split(",") if c.strip()} if codes_str else set()
+            suppressed[lineno] = codes
+        return suppressed
 
     @staticmethod
     def _build_dispatch(rules: list[Rule]) -> dict[type[ast.AST], list[Rule]]:
@@ -142,7 +136,7 @@ class TypeforceChecker(ast.NodeVisitor):
                 self._record(error)
 
     def _record(self, error: TypeforceError) -> None:
-        """Apply all filters and append the error if it should be reported."""
+        """Apply all filters and append the error if it passes."""
         if not self._is_rule_active(error.code):
             return
         if self._is_inline_suppressed(error.line, error.code):
@@ -152,9 +146,7 @@ class TypeforceChecker(ast.NodeVisitor):
     def _is_rule_active(self, code: str) -> bool:
         if self._selected_rules is not None and code not in self._selected_rules:
             return False
-        if self._config.is_rule_ignored(code, self._filename):
-            return False
-        return True
+        return not self._config.is_rule_ignored(code, self._filename)
 
     def _is_inline_suppressed(self, lineno: int, code: str) -> bool:
         ignored = self._inline_ignores.get(lineno)
@@ -186,8 +178,7 @@ def check_source(
             )
         ]
 
-    checker = TypeforceChecker(source, filename, config, selected_rules)
-    return checker.run(tree)
+    return TypeforceChecker(source, filename, config, selected_rules).run(tree)
 
 
 def check_file(

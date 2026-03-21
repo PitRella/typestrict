@@ -3,44 +3,64 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import ClassVar, Sequence
 
 import click
 
 from typeforce.checker import check_file
-from typeforce.config import TypeforceConfig, load_config
+from typeforce.config import TypeforceConfig
 from typeforce.errors import TypeforceError
 from typeforce.formatters.base import BaseFormatter
 from typeforce.formatters.json import JsonFormatter
 from typeforce.formatters.text import TextFormatter
 
-_PYTHON_GLOB = "**/*.py"
 
+class Runner:
+    """Collects Python files and runs typeforce checks across them."""
 
-def _collect_python_files(path: Path, config: TypeforceConfig) -> list[Path]:
-    """Recursively collect ``.py`` files under *path*, respecting exclusions."""
-    if path.is_file():
-        if path.suffix == ".py" and not config.is_file_excluded(str(path)):
-            return [path]
-        return []
+    _PYTHON_GLOB: ClassVar[str] = "**/*.py"
+    _FORMATTERS: ClassVar[dict[str, type[BaseFormatter]]] = {
+        "text": TextFormatter,
+        "json": JsonFormatter,
+    }
 
-    files: list[Path] = []
-    for py_file in sorted(path.glob(_PYTHON_GLOB)):
-        if not config.is_file_excluded(str(py_file)):
-            files.append(py_file)
-    return files
+    def __init__(
+        self,
+        config: TypeforceConfig,
+        selected_rules: list[str] | None = None,
+    ) -> None:
+        self._config = config
+        self._selected_rules = selected_rules
 
+    def collect_files(self, paths: Sequence[Path]) -> list[Path]:
+        """Recursively collect ``.py`` files under *paths*, respecting exclusions."""
+        files: list[Path] = []
+        for path in paths:
+            files.extend(self._collect_from(path))
+        return files
 
-def _run_checks(
-    paths: Sequence[Path],
-    config: TypeforceConfig,
-    selected_rules: list[str] | None,
-) -> list[TypeforceError]:
-    """Run typeforce checks over all *paths* and return the combined error list."""
-    all_errors: list[TypeforceError] = []
-    for path in paths:
-        all_errors.extend(check_file(path, config, selected_rules))
-    return sorted(all_errors, key=lambda e: (e.file, e.line, e.col))
+    def run(self, paths: Sequence[Path]) -> list[TypeforceError]:
+        """Run checks on all collected files and return sorted errors."""
+        all_errors: list[TypeforceError] = []
+        for path in self.collect_files(paths):
+            all_errors.extend(check_file(path, self._config, self._selected_rules))
+        return sorted(all_errors, key=lambda e: (e.file, e.line, e.col))
+
+    def formatter(self, output_format: str) -> BaseFormatter:
+        """Return the formatter instance for the given *output_format* key."""
+        formatter_cls = self._FORMATTERS.get(output_format, TextFormatter)
+        return formatter_cls()
+
+    def _collect_from(self, path: Path) -> list[Path]:
+        if path.is_file():
+            if path.suffix == ".py" and not self._config.is_file_excluded(str(path)):
+                return [path]
+            return []
+
+        return [
+            f for f in sorted(path.glob(self._PYTHON_GLOB))
+            if not self._config.is_file_excluded(str(f))
+        ]
 
 
 @click.group()
@@ -58,7 +78,7 @@ def cli() -> None:
 @click.option(
     "--format",
     "output_format",
-    type=click.Choice(["text", "json"], case_sensitive=False),
+    type=click.Choice(list(Runner._FORMATTERS), case_sensitive=False),
     default="text",
     show_default=True,
     help="Output format.",
@@ -90,25 +110,13 @@ def check_command(
     config_path: Path | None,
 ) -> None:
     """Check one or more files/directories for missing type annotations."""
-    config = load_config(config_path)
+    config = TypeforceConfig.from_pyproject(config_path)
+    selected_rules = [r.strip() for r in select.split(",") if r.strip()] if select else None
 
-    selected_rules: list[str] | None = None
-    if select:
-        selected_rules = [r.strip() for r in select.split(",") if r.strip()]
+    runner = Runner(config, selected_rules)
+    errors = runner.run(paths)
 
-    python_files: list[Path] = []
-    for path in paths:
-        python_files.extend(_collect_python_files(path, config))
-
-    errors = _run_checks(python_files, config, selected_rules)
-
-    if output_format == "json":
-        formatter: BaseFormatter = JsonFormatter()
-    else:
-        formatter = TextFormatter()
-
-    output = formatter.format(errors)
-    click.echo(output)
+    click.echo(runner.formatter(output_format).format(errors))
 
     if fail_on_error and errors:
         sys.exit(1)
