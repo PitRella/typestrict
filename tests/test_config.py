@@ -1,0 +1,90 @@
+"""Tests for config loading and rule filtering."""
+from __future__ import annotations
+
+import textwrap
+from pathlib import Path
+
+import pytest
+
+from typestrict.config import TypestrictConfig
+
+
+class TestTypestrictConfig:
+    """Unit tests for TypestrictConfig behaviour."""
+
+    def test_default_ignore_tf005(self) -> None:
+        config = TypestrictConfig()
+        assert config.is_rule_ignored("TF005")
+
+    def test_custom_ignore(self) -> None:
+        config = TypestrictConfig(ignore=["TF001"])
+        assert config.is_rule_ignored("TF001")
+        assert not config.is_rule_ignored("TF002")
+
+    def test_per_file_ignore(self) -> None:
+        config = TypestrictConfig(
+            ignore=[],
+            per_file_ignores={"settings.py": ["TF001"]},
+        )
+        assert config.is_rule_ignored("TF001", file_path="settings.py")
+        assert not config.is_rule_ignored("TF001", file_path="models.py")
+
+    def test_is_file_excluded_by_dir(self) -> None:
+        config = TypestrictConfig(exclude=["migrations/"])
+        assert config.is_file_excluded("app/migrations/0001_initial.py")
+
+    def test_is_file_excluded_by_name(self) -> None:
+        config = TypestrictConfig(exclude=["conftest.py"])
+        assert config.is_file_excluded("/project/tests/conftest.py")
+
+    def test_is_file_not_excluded(self) -> None:
+        config = TypestrictConfig(exclude=["migrations/"])
+        assert not config.is_file_excluded("app/models.py")
+
+    def test_strict_removes_tf005_from_ignore(self) -> None:
+        config = TypestrictConfig.from_dict({"strict": True, "ignore": ["TF005"]})
+        assert "TF005" not in config.ignore
+
+    def test_strict_false_keeps_tf005_in_ignore(self) -> None:
+        config = TypestrictConfig.from_dict({"strict": False, "ignore": ["TF005"]})
+        assert "TF005" in config.ignore
+
+
+class TestMatchesPattern:
+    """Unit tests for TypestrictConfig._matches_pattern."""
+
+    def test_directory_pattern(self) -> None:
+        assert TypestrictConfig._matches_pattern("app/migrations/0001.py", "migrations/")
+
+    def test_filename_pattern(self) -> None:
+        assert TypestrictConfig._matches_pattern("/project/tests/conftest.py", "conftest.py")
+
+    def test_no_match(self) -> None:
+        assert not TypestrictConfig._matches_pattern("app/models.py", "migrations/")
+
+
+class TestLoadConfig:
+    """Integration tests for load_config using a temp pyproject.toml."""
+
+    def test_load_from_pyproject(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            textwrap.dedent(
+                """\
+                [tool.typestrict]
+                ignore = ["TF001"]
+                strict = false
+                """
+            )
+        )
+        from typestrict.config import load_config
+
+        config = load_config(tmp_path)
+        assert "TF001" in config.ignore
+
+    def test_defaults_when_no_pyproject(self, tmp_path: Path) -> None:
+        from typestrict.config import load_config
+
+        config = load_config(tmp_path)
+        # Should return default config without crashing
+        assert isinstance(config, TypestrictConfig)
