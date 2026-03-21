@@ -14,12 +14,17 @@ class Rule(ABC):
     - ``code``       – the rule code, e.g. ``"TF001"``
     - ``node_types`` – AST node types this rule handles
 
-    The checker builds a dispatch table from ``node_types`` so new rules are
-    picked up automatically without touching ``checker.py``.
+    Optional overrides:
+    - ``skip_in_class_body`` – set to ``True`` to skip nodes that appear
+      directly inside a class body (default: ``False``)
+
+    The checker builds a dispatch table from ``node_types`` automatically,
+    so new rules are picked up without touching ``checker.py``.
     """
 
     code: str
     node_types: tuple[type[ast.AST], ...]
+    skip_in_class_body: bool = False
 
     @abstractmethod
     def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
