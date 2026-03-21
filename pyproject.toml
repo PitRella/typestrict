@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "typestrict"
+name = "must-annotate"
 version = "0.1.0"
 description = "Static analysis tool that enforces type annotation presence in Python code"
 readme = "README.md"
