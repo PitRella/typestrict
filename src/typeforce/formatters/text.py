@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 from typeforce.errors import TypeforceError
+from typeforce.formatters.base import BaseFormatter
 
 
-class TextFormatter:
+class TextFormatter(BaseFormatter):
     """Format errors for terminal output."""
 
     def format(self, errors: list[TypeforceError]) -> str:

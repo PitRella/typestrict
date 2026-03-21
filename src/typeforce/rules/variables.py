@@ -4,13 +4,12 @@ from __future__ import annotations
 import ast
 
 from typeforce.errors import TypeforceError
+from typeforce.rules.base import Rule
 
-_RULE_CODE: str = "TF001"
 _DUNDER_PREFIX: str = "__"
 
 
 def _is_dunder_name(name: str) -> bool:
-    """Return True for names like ``__all__``, ``__version__``, etc."""
     return name.startswith(_DUNDER_PREFIX) and name.endswith(_DUNDER_PREFIX)
 
 
@@ -31,36 +30,28 @@ def _collect_names(target: ast.expr) -> list[str]:
     return []
 
 
-def check_assignment(
-    node: ast.Assign,
-    filename: str,
-) -> list[TypeforceError]:
-    """Check an ``ast.Assign`` node for TF001 violations.
+class VariableAnnotationRule(Rule):
+    """TF001 – plain variable assignment without annotation."""
 
-    Rules:
-    - Skip dunder names (``__all__``, ``__version__``, …)
-    - Skip ``_ = …`` (unused value convention)
-    - Flag all names in tuple-unpacking targets (``a, b = func()``)
-    - ``ast.AugAssign`` nodes (``x += 1``) are never passed here; the caller
-      is responsible for filtering those out.
-    """
-    errors: list[TypeforceError] = []
+    code = "TF001"
+    node_types = (ast.Assign,)
 
-    for target in node.targets:
-        for name in _collect_names(target):
-            if name == "_":
-                continue
-            if _is_dunder_name(name):
-                continue
+    def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
+        assert isinstance(node, ast.Assign)
+        errors: list[TypeforceError] = []
 
-            errors.append(
-                TypeforceError(
-                    file=filename,
-                    line=node.lineno,
-                    col=node.col_offset,
-                    code=_RULE_CODE,
-                    message=f"Variable '{name}' missing type annotation",
+        for target in node.targets:
+            for name in _collect_names(target):
+                if name == "_" or _is_dunder_name(name):
+                    continue
+                errors.append(
+                    TypeforceError(
+                        file=filename,
+                        line=node.lineno,
+                        col=node.col_offset,
+                        code=self.code,
+                        message=f"Variable '{name}' missing type annotation",
+                    )
                 )
-            )
 
-    return errors
+        return errors
