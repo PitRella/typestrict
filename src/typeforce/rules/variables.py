@@ -35,6 +35,7 @@ class VariableAnnotationRule(Rule):
 
     code = "TF001"
     node_types = (ast.Assign,)
+    skip_in_class_body = True
 
     def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
         assert isinstance(node, ast.Assign)
