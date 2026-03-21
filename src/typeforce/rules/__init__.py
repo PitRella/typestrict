@@ -1,13 +1,14 @@
 """Rule modules for typeforce."""
-from typeforce.rules.classes import check_class
-from typeforce.rules.functions import check_function
-from typeforce.rules.loops import check_loop, check_with
-from typeforce.rules.variables import check_assignment
+from typeforce.rules.base import Rule
+from typeforce.rules.classes import ClassAnnotationRule
+from typeforce.rules.functions import FunctionAnnotationRule
+from typeforce.rules.loops import LoopAnnotationRule
+from typeforce.rules.variables import VariableAnnotationRule
 
 __all__ = [
-    "check_assignment",
-    "check_function",
-    "check_class",
-    "check_loop",
-    "check_with",
+    "Rule",
+    "VariableAnnotationRule",
+    "FunctionAnnotationRule",
+    "ClassAnnotationRule",
+    "LoopAnnotationRule",
 ]

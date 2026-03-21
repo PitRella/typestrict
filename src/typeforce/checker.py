@@ -8,10 +8,15 @@ from typing import Sequence
 
 from typeforce.config import TypeforceConfig
 from typeforce.errors import TypeforceError
-from typeforce.rules.classes import check_class
-from typeforce.rules.functions import check_function
-from typeforce.rules.loops import check_loop, check_with
-from typeforce.rules.variables import check_assignment
+from typeforce.rules.classes import ClassAnnotationRule
+from typeforce.rules.functions import FunctionAnnotationRule
+from typeforce.rules.loops import LoopAnnotationRule
+from typeforce.rules.variables import VariableAnnotationRule
+
+_variable_rule = VariableAnnotationRule()
+_function_rule = FunctionAnnotationRule()
+_class_rule = ClassAnnotationRule()
+_loop_rule = LoopAnnotationRule()
 
 # Matches:  # typeforce: ignore  or  # typeforce: ignore[TF001,TF002]
 _INLINE_IGNORE_RE = re.compile(
@@ -105,25 +110,25 @@ class TypeforceChecker(ast.NodeVisitor):
     def visit_Assign(self, node: ast.Assign) -> None:
         """TF001 – plain variable assignment without annotation."""
         if not self._scope.inside_class:
-            for error in check_assignment(node, self._filename):
+            for error in _variable_rule.check(node, self._filename):
                 self._record(error)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         """TF002 / TF003 – function argument and return annotations."""
-        for error in check_function(node, self._filename):
+        for error in _function_rule.check(node, self._filename):
             self._record(error)
         self.generic_visit(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         """TF002 / TF003 – async function argument and return annotations."""
-        for error in check_function(node, self._filename):
+        for error in _function_rule.check(node, self._filename):
             self._record(error)
         self.generic_visit(node)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         """TF004 – class attribute assignments without annotations."""
-        for error in check_class(node, self._filename):
+        for error in _class_rule.check(node, self._filename):
             self._record(error)
         self._scope.enter_class()
         self.generic_visit(node)
@@ -131,13 +136,13 @@ class TypeforceChecker(ast.NodeVisitor):
 
     def visit_For(self, node: ast.For) -> None:
         """TF005 – loop variable without annotation."""
-        for error in check_loop(node, self._filename):
+        for error in _loop_rule.check(node, self._filename):
             self._record(error)
         self.generic_visit(node)
 
     def visit_With(self, node: ast.With) -> None:
         """TF005 – context-manager variable without annotation."""
-        for error in check_with(node, self._filename):
+        for error in _loop_rule.check(node, self._filename):
             self._record(error)
         self.generic_visit(node)
 

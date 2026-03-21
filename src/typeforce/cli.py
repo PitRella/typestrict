@@ -10,6 +10,7 @@ import click
 from typeforce.checker import check_file
 from typeforce.config import TypeforceConfig, load_config
 from typeforce.errors import TypeforceError
+from typeforce.formatters.base import BaseFormatter
 from typeforce.formatters.json import JsonFormatter
 from typeforce.formatters.text import TextFormatter
 
@@ -102,7 +103,7 @@ def check_command(
     errors = _run_checks(python_files, config, selected_rules)
 
     if output_format == "json":
-        formatter: JsonFormatter | TextFormatter = JsonFormatter()
+        formatter: BaseFormatter = JsonFormatter()
     else:
         formatter = TextFormatter()
 
