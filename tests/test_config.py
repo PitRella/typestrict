@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from typeforce.config import TypeforceConfig, _build_config, _path_matches_pattern
+from typeforce.config import TypeforceConfig
 
 
 class TestTypeforceConfig:
@@ -42,27 +42,25 @@ class TestTypeforceConfig:
         assert not config.is_file_excluded("app/models.py")
 
     def test_strict_removes_tf005_from_ignore(self) -> None:
-        section: dict[str, object] = {"strict": True, "ignore": ["TF005"]}
-        config = _build_config(section)
+        config = TypeforceConfig.from_dict({"strict": True, "ignore": ["TF005"]})
         assert "TF005" not in config.ignore
 
     def test_strict_false_keeps_tf005_in_ignore(self) -> None:
-        section: dict[str, object] = {"strict": False, "ignore": ["TF005"]}
-        config = _build_config(section)
+        config = TypeforceConfig.from_dict({"strict": False, "ignore": ["TF005"]})
         assert "TF005" in config.ignore
 
 
-class TestPathMatchesPattern:
-    """Unit tests for _path_matches_pattern."""
+class TestMatchesPattern:
+    """Unit tests for TypeforceConfig._matches_pattern."""
 
     def test_directory_pattern(self) -> None:
-        assert _path_matches_pattern("app/migrations/0001.py", "migrations/")
+        assert TypeforceConfig._matches_pattern("app/migrations/0001.py", "migrations/")
 
     def test_filename_pattern(self) -> None:
-        assert _path_matches_pattern("/project/tests/conftest.py", "conftest.py")
+        assert TypeforceConfig._matches_pattern("/project/tests/conftest.py", "conftest.py")
 
     def test_no_match(self) -> None:
-        assert not _path_matches_pattern("app/models.py", "migrations/")
+        assert not TypeforceConfig._matches_pattern("app/models.py", "migrations/")
 
 
 class TestLoadConfig:

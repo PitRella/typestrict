@@ -2,9 +2,20 @@
 from __future__ import annotations
 
 import json
+from typing import TypedDict
 
 from typeforce.errors import TypeforceError
 from typeforce.formatters.base import BaseFormatter
+
+
+class _ErrorDict(TypedDict):
+    """JSON shape of a single typeforce error."""
+
+    file: str
+    line: int
+    col: int
+    code: str
+    message: str
 
 
 class JsonFormatter(BaseFormatter):
@@ -12,14 +23,14 @@ class JsonFormatter(BaseFormatter):
 
     def format(self, errors: list[TypeforceError]) -> str:
         """Return a JSON string representing the list of errors."""
-        payload = [
+        payload: list[_ErrorDict] = [
             {
-                "file": error.file,
-                "line": error.line,
-                "col": error.col,
-                "code": error.code,
-                "message": error.message,
+                "file": e.file,
+                "line": e.line,
+                "col": e.col,
+                "code": e.code,
+                "message": e.message,
             }
-            for error in errors
+            for e in errors
         ]
         return json.dumps(payload, indent=2, ensure_ascii=False)
