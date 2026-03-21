@@ -65,9 +65,12 @@ class TestTF001Specifics:
         errors = self._check("_ = some_func()\n")
         assert errors == []
 
-    def test_tuple_unpack_skipped(self) -> None:
+    def test_tuple_unpack_flagged(self) -> None:
         errors = self._check("a, b = func()\n")
-        assert errors == []
+        assert len(errors) == 2
+        names = {e.message for e in errors}
+        assert any("'a'" in m for m in names)
+        assert any("'b'" in m for m in names)
 
     def test_aug_assign_skipped(self) -> None:
         errors = self._check("counter: int = 0\ncounter += 1\n")

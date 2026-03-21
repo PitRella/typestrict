@@ -9,7 +9,5 @@ __version__: str = "0.1.0"
 __all__ = ["x", "y"]          # dunder – skip
 _ = some_call()               # unused-value convention – skip
 
-a, b = some_tuple()           # tuple-unpack – skip
-
 counter: int = 0
 counter += 1                  # AugAssign – not an ast.Assign

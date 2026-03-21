@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ast
 from abc import ABC, abstractmethod
+from typing import ClassVar
 
 from typeforce.errors import TypeforceError
 
@@ -22,9 +23,9 @@ class Rule(ABC):
     so new rules are picked up without touching ``checker.py``.
     """
 
-    code: str
-    node_types: tuple[type[ast.AST], ...]
-    skip_in_class_body: bool = False
+    code: ClassVar[str]
+    node_types: ClassVar[tuple[type[ast.AST], ...]]
+    skip_in_class_body: ClassVar[bool] = False
 
     @abstractmethod
     def check(self, node: ast.AST, filename: str) -> list[TypeforceError]:
