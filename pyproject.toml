@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "typeforce"
+name = "typestrict"
 version = "0.1.0"
 description = "Static analysis tool that enforces type annotation presence in Python code"
 readme = "README.md"
@@ -36,17 +36,17 @@ dev = [
 ]
 
 [project.scripts]
-typeforce = "typeforce.cli:main"
+typestrict = "typestrict.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/pit-rella/typeforce"
-Repository = "https://github.com/pit-rella/typeforce"
-Issues = "https://github.com/pit-rella/typeforce/issues"
+Homepage = "https://github.com/PitRella/typestrict"
+Repository = "https://github.com/PitRella/typestrict"
+Issues = "https://github.com/PitRella/typestrict/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/typeforce"]
+packages = ["src/typestrict"]
 
-[tool.typeforce]
+[tool.typestrict]
 exclude = ["tests/", "migrations/", "conftest.py"]
 ignore = ["TF005"]
 per_file_ignores = {}
@@ -61,4 +61,4 @@ addopts = "-v --tb=short"
 python_version = "3.10"
 strict = true
 mypy_path = "src"
-packages = ["typeforce"]
+packages = ["typestrict"]

@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from typeforce.checker import check_source
-from typeforce.config import TypeforceConfig
-from typeforce.errors import TypeforceError
+from typestrict.checker import check_source
+from typestrict.config import TypestrictConfig
+from typestrict.errors import TypestrictError
 from tests.conftest import FIXTURES_DIR, run_checker
 
 
@@ -43,8 +43,8 @@ class TestTF001PassFixture:
 class TestTF001Specifics:
     """Unit-level checks for specific TF001 scenarios."""
 
-    def _check(self, source: str) -> list[TypeforceError]:
-        config = TypeforceConfig(exclude=[], ignore=[], per_file_ignores={}, strict=True)
+    def _check(self, source: str) -> list[TypestrictError]:
+        config = TypestrictConfig(exclude=[], ignore=[], per_file_ignores={}, strict=True)
         return check_source(source, "<test>", config, selected_rules=["TF001"])
 
     def test_plain_assignment_triggers(self) -> None:
@@ -77,15 +77,15 @@ class TestTF001Specifics:
         assert errors == []
 
     def test_inline_ignore_suppresses(self) -> None:
-        errors = self._check("x = 1  # typeforce: ignore\n")
+        errors = self._check("x = 1  # typestrict: ignore\n")
         assert errors == []
 
     def test_inline_ignore_specific_code_suppresses(self) -> None:
-        errors = self._check("x = 1  # typeforce: ignore[TF001]\n")
+        errors = self._check("x = 1  # typestrict: ignore[TF001]\n")
         assert errors == []
 
     def test_inline_ignore_other_code_does_not_suppress(self) -> None:
-        errors = self._check("x = 1  # typeforce: ignore[TF002]\n")
+        errors = self._check("x = 1  # typestrict: ignore[TF002]\n")
         assert len(errors) == 1
 
     def test_multiple_assignments(self) -> None:
@@ -102,7 +102,7 @@ class TestTF001Specifics:
         assert errors[0].col == 0
 
     def test_config_ignore_suppresses(self) -> None:
-        config = TypeforceConfig(
+        config = TypestrictConfig(
             exclude=[], ignore=["TF001"], per_file_ignores={}, strict=False
         )
         errors = check_source("x = 1\n", "<test>", config)
@@ -118,6 +118,6 @@ class TestTF001Specifics:
 
     def test_inline_ignore_inside_string_not_suppressed(self) -> None:
         # The pattern inside a string literal must NOT suppress the TF001 error
-        errors = self._check('x = "# typeforce: ignore"\n')
+        errors = self._check('x = "# typestrict: ignore"\n')
         assert len(errors) == 1
         assert errors[0].code == "TF001"

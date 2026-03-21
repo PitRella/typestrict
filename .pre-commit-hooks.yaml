@@ -1,7 +1,7 @@
 - id: typeforce
   name: typeforce
   description: Enforce type annotation presence in Python code
-  entry: typeforce check --fail-on-error
+  entry: typestrict check --fail-on-error
   language: python
   types: [python]
   pass_filenames: true

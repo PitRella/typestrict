@@ -1,9 +1,9 @@
-# typeforce
+# typestrict
 
-**typeforce** is a Python static analysis tool that **enforces the presence** of
+**typestrict** is a Python static analysis tool that **enforces the presence** of
 type annotations in Python code.
 
-Unlike mypy or pyright which verify annotation *correctness*, typeforce simply
+Unlike mypy or pyright which verify annotation *correctness*, typestrict simply
 checks that every variable, function argument, and return value *has* an
 annotation.  If it is missing — that is an error.
 
@@ -22,7 +22,7 @@ result: User = get_user()
 ## Installation
 
 ```bash
-pip install typeforce
+pip install typestrict
 ```
 
 Requires Python 3.10+.
@@ -33,19 +33,19 @@ Requires Python 3.10+.
 
 ```bash
 # Check a single file
-typeforce check app/models.py
+typestrict check app/models.py
 
 # Check a directory recursively
-typeforce check src/
+typestrict check src/
 
 # Output as JSON (for CI/CD)
-typeforce check src/ --format json
+typestrict check src/ --format json
 
 # Check only specific rules
-typeforce check src/ --select TF001,TF002
+typestrict check src/ --select TF001,TF002
 
 # Exit with code 1 if errors are found (pre-commit / CI)
-typeforce check src/ --fail-on-error
+typestrict check src/ --fail-on-error
 ```
 
 ### Example output
@@ -75,7 +75,7 @@ Found 3 errors in 2 files
 ## Configuration (`pyproject.toml`)
 
 ```toml
-[tool.typeforce]
+[tool.typestrict]
 # Exclude directories or files from analysis
 exclude = ["tests/", "migrations/", "conftest.py"]
 
@@ -96,13 +96,13 @@ strict = false
 Suppress an error on a specific line:
 
 ```python
-data = json.loads(response.text)  # typeforce: ignore
+data = json.loads(response.text)  # typestrict: ignore
 ```
 
 Suppress a specific rule code:
 
 ```python
-data = json.loads(response.text)  # typeforce: ignore[TF001]
+data = json.loads(response.text)  # typestrict: ignore[TF001]
 ```
 
 ---
@@ -113,10 +113,10 @@ Add to your `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/example/typeforce
+  - repo: https://github.com/example/typestrict
     rev: v0.1.0
     hooks:
-      - id: typeforce
+      - id: typestrict
 ```
 
 ---

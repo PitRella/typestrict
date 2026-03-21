@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from typeforce.checker import check_source
-from typeforce.config import TypeforceConfig
-from typeforce.errors import TypeforceError
+from typestrict.checker import check_source
+from typestrict.config import TypestrictConfig
+from typestrict.errors import TypestrictError
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -47,14 +47,14 @@ def parse_expected_errors(source: str, filename: str) -> list[tuple[int, str]]:
 
 def run_checker(
     fixture_name: str,
-    extra_config: TypeforceConfig | None = None,
+    extra_config: TypestrictConfig | None = None,
     selected_rules: list[str] | None = None,
-) -> tuple[list[TypeforceError], list[tuple[int, str]]]:
+) -> tuple[list[TypestrictError], list[tuple[int, str]]]:
     """Run the checker on a fixture file and return (actual_errors, expected_errors)."""
     fixture_path = FIXTURES_DIR / fixture_name
     source = fixture_path.read_text(encoding="utf-8")
 
-    config = extra_config or TypeforceConfig(
+    config = extra_config or TypestrictConfig(
         exclude=[],
         ignore=[],  # Enable ALL rules for testing
         per_file_ignores={},
@@ -67,9 +67,9 @@ def run_checker(
 
 
 @pytest.fixture()
-def default_config() -> TypeforceConfig:
-    """Return a default TypeforceConfig suitable for tests (all rules enabled)."""
-    return TypeforceConfig(
+def default_config() -> TypestrictConfig:
+    """Return a default TypestrictConfig suitable for tests (all rules enabled)."""
+    return TypestrictConfig(
         exclude=[],
         ignore=[],
         per_file_ignores={},
