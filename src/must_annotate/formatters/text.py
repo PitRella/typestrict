@@ -1,14 +1,14 @@
 """Human-readable text formatter."""
 from __future__ import annotations
 
-from typestrict.errors import TypestrictError
-from typestrict.formatters.base import BaseFormatter
+from must_annotate.errors import MustAnnotateError
+from must_annotate.formatters.base import BaseFormatter
 
 
 class TextFormatter(BaseFormatter):
     """Format errors for terminal output."""
 
-    def format(self, errors: list[TypestrictError]) -> str:
+    def format(self, errors: list[MustAnnotateError]) -> str:
         """Return a multi-line string suitable for terminal display."""
         if not errors:
             return "No errors found."

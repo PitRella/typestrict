@@ -1,10 +1,10 @@
-"""Error dataclass for typestrict violations."""
+"""Error dataclass for must-annotate violations."""
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class TypestrictError:
-    """Represents a single typestrict rule violation."""
+class MustAnnotateError:
+    """Represents a single must-annotate rule violation."""
 
     file: str
     line: int

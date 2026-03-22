@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from typestrict.checker import check_source
-from typestrict.config import TypestrictConfig
-from typestrict.errors import TypestrictError
+from must_annotate.checker import check_source
+from must_annotate.config import MustAnnotateConfig
+from must_annotate.errors import MustAnnotateError
 from tests.conftest import run_checker
 
 
-def _check(source: str, rules: list[str] | None = None) -> list[TypestrictError]:
-    config = TypestrictConfig(exclude=[], ignore=[], per_file_ignores={}, strict=True)
+def _check(source: str, rules: list[str] | None = None) -> list[MustAnnotateError]:
+    config = MustAnnotateConfig(exclude=[], ignore=[], per_file_ignores={}, strict=True)
     return check_source(source, "<test>", config, selected_rules=rules)
 
 
@@ -119,7 +119,7 @@ class TestTF003ReturnType:
         assert errors == []
 
     def test_inline_ignore_suppresses_tf003(self) -> None:
-        source = "def f(): pass  # typestrict: ignore[TF003]\n"
+        source = "def f(): pass  # must-annotate: ignore[TF003]\n"
         errors = _check(source, ["TF003"])
         assert errors == []
 

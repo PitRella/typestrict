@@ -1,9 +1,9 @@
-# typestrict
+# must-annotate
 
-**typestrict** is a Python static analysis tool that **enforces the presence** of
+**must-annotate** is a Python static analysis tool that **enforces the presence** of
 type annotations in Python code.
 
-Unlike mypy or pyright which verify annotation *correctness*, typestrict simply
+Unlike mypy or pyright which verify annotation *correctness*, must-annotate simply
 checks that every variable, function argument, and return value *has* an
 annotation.  If it is missing — that is an error.
 
@@ -22,7 +22,7 @@ result: User = get_user()
 ## Installation
 
 ```bash
-pip install typestrict
+pip install must-annotate
 ```
 
 Requires Python 3.10+.
@@ -33,19 +33,19 @@ Requires Python 3.10+.
 
 ```bash
 # Check a single file
-typestrict check app/models.py
+must-annotate check app/models.py
 
 # Check a directory recursively
-typestrict check src/
+must-annotate check src/
 
 # Output as JSON (for CI/CD)
-typestrict check src/ --format json
+must-annotate check src/ --format json
 
 # Check only specific rules
-typestrict check src/ --select TF001,TF002
+must-annotate check src/ --select TF001,TF002
 
 # Exit with code 1 if errors are found (pre-commit / CI)
-typestrict check src/ --fail-on-error
+must-annotate check src/ --fail-on-error
 ```
 
 ### Example output
@@ -75,7 +75,7 @@ Found 3 errors in 2 files
 ## Configuration (`pyproject.toml`)
 
 ```toml
-[tool.typestrict]
+[tool.must-annotate]
 # Exclude directories or files from analysis
 exclude = ["tests/", "migrations/", "conftest.py"]
 
@@ -96,13 +96,13 @@ strict = false
 Suppress an error on a specific line:
 
 ```python
-data = json.loads(response.text)  # typestrict: ignore
+data = json.loads(response.text)  # must-annotate: ignore
 ```
 
 Suppress a specific rule code:
 
 ```python
-data = json.loads(response.text)  # typestrict: ignore[TF001]
+data = json.loads(response.text)  # must-annotate: ignore[TF001]
 ```
 
 ---
@@ -113,10 +113,10 @@ Add to your `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/example/typestrict
+  - repo: https://github.com/example/must-annotate
     rev: v0.1.0
     hooks:
-      - id: typestrict
+      - id: must-annotate
 ```
 
 ---

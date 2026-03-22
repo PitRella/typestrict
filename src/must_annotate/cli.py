@@ -1,4 +1,4 @@
-"""CLI entry-point for typestrict."""
+"""CLI entry-point for must-annotate."""
 from __future__ import annotations
 
 import sys
@@ -7,16 +7,16 @@ from typing import ClassVar, Sequence
 
 import click
 
-from typestrict.checker import check_file
-from typestrict.config import TypestrictConfig
-from typestrict.errors import TypestrictError
-from typestrict.formatters.base import BaseFormatter
-from typestrict.formatters.json import JsonFormatter
-from typestrict.formatters.text import TextFormatter
+from must_annotate.checker import check_file
+from must_annotate.config import MustAnnotateConfig
+from must_annotate.errors import MustAnnotateError
+from must_annotate.formatters.base import BaseFormatter
+from must_annotate.formatters.json import JsonFormatter
+from must_annotate.formatters.text import TextFormatter
 
 
 class Runner:
-    """Collects Python files and runs typestrict checks across them."""
+    """Collects Python files and runs must-annotate checks across them."""
 
     _PYTHON_GLOB: ClassVar[str] = "**/*.py"
     _FORMATTERS: ClassVar[dict[str, type[BaseFormatter]]] = {
@@ -24,15 +24,15 @@ class Runner:
         "json": JsonFormatter,
     }
 
-    _config: TypestrictConfig
+    _config: MustAnnotateConfig
     _selected_rules: list[str] | None
 
     def __init__(
         self,
-        config: TypestrictConfig,
+        config: MustAnnotateConfig,
         selected_rules: list[str] | None = None,
     ) -> None:
-        self._config: TypestrictConfig = config
+        self._config: MustAnnotateConfig = config
         self._selected_rules: list[str] | None = selected_rules
 
     def collect_files(self, paths: Sequence[Path]) -> list[Path]:
@@ -42,9 +42,9 @@ class Runner:
             files.extend(self._collect_from(path))
         return files
 
-    def run(self, paths: Sequence[Path]) -> list[TypestrictError]:
+    def run(self, paths: Sequence[Path]) -> list[MustAnnotateError]:
         """Run checks on all collected files and return sorted errors."""
-        all_errors: list[TypestrictError] = []
+        all_errors: list[MustAnnotateError] = []
         for path in self.collect_files(paths):
             all_errors.extend(check_file(path, self._config, self._selected_rules))
         return sorted(all_errors, key=lambda e: (e.file, e.line, e.col))
@@ -68,7 +68,7 @@ class Runner:
 
 @click.group()
 def cli() -> None:
-    """typestrict – enforce type annotation presence in Python code."""
+    """must-annotate – enforce type annotation presence in Python code."""
 
 
 @cli.command("check")
@@ -113,12 +113,12 @@ def check_command(
     config_path: Path | None,
 ) -> None:
     """Check one or more files/directories for missing type annotations."""
-    config: TypestrictConfig = TypestrictConfig.from_pyproject(config_path)
+    config: MustAnnotateConfig = MustAnnotateConfig.from_pyproject(config_path)
     selected_rules: list[str] | None = (
         [r.strip() for r in select.split(",") if r.strip()] if select else None
     )
     runner: Runner = Runner(config, selected_rules)
-    errors: list[TypestrictError] = runner.run(paths)
+    errors: list[MustAnnotateError] = runner.run(paths)
 
     click.echo(runner.formatter(output_format).format(errors))
 
