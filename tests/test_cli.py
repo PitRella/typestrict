@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from typestrict.cli import cli
+from must_annotate.cli import cli
 from tests.conftest import FIXTURES_DIR
 
 
@@ -18,15 +18,15 @@ def runner() -> CliRunner:
 
 @pytest.fixture()
 def empty_config_dir(tmp_path: Path) -> Path:
-    """A directory with an empty [tool.typestrict] section (no excludes/ignores)."""
+    """A directory with an empty [tool.must-annotate] section (no excludes/ignores)."""
     (tmp_path / "pyproject.toml").write_text(
-        "[tool.typestrict]\nexclude = []\nignore = []\nstrict = true\n"
+        "[tool.must-annotate]\nexclude = []\nignore = []\nstrict = true\n"
     )
     return tmp_path
 
 
 class TestCheckCommand:
-    """Integration tests for ``typestrict check``."""
+    """Integration tests for ``must-annotate check``."""
 
     def test_check_single_file_text_output(
         self, runner: CliRunner, empty_config_dir: Path

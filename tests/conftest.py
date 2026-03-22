@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from typestrict.checker import check_source
-from typestrict.config import TypestrictConfig
-from typestrict.errors import TypestrictError
+from must_annotate.checker import check_source
+from must_annotate.config import MustAnnotateConfig
+from must_annotate.errors import MustAnnotateError
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -47,14 +47,14 @@ def parse_expected_errors(source: str, filename: str) -> list[tuple[int, str]]:
 
 def run_checker(
     fixture_name: str,
-    extra_config: TypestrictConfig | None = None,
+    extra_config: MustAnnotateConfig | None = None,
     selected_rules: list[str] | None = None,
-) -> tuple[list[TypestrictError], list[tuple[int, str]]]:
+) -> tuple[list[MustAnnotateError], list[tuple[int, str]]]:
     """Run the checker on a fixture file and return (actual_errors, expected_errors)."""
     fixture_path = FIXTURES_DIR / fixture_name
     source = fixture_path.read_text(encoding="utf-8")
 
-    config = extra_config or TypestrictConfig(
+    config = extra_config or MustAnnotateConfig(
         exclude=[],
         ignore=[],  # Enable ALL rules for testing
         per_file_ignores={},
@@ -67,9 +67,9 @@ def run_checker(
 
 
 @pytest.fixture()
-def default_config() -> TypestrictConfig:
-    """Return a default TypestrictConfig suitable for tests (all rules enabled)."""
-    return TypestrictConfig(
+def default_config() -> MustAnnotateConfig:
+    """Return a default MustAnnotateConfig suitable for tests (all rules enabled)."""
+    return MustAnnotateConfig(
         exclude=[],
         ignore=[],
         per_file_ignores={},

@@ -16,7 +16,7 @@ except ImportError:
 
 
 class _TomlSection(TypedDict, total=False):
-    """Shape of the raw ``[tool.typestrict]`` TOML table."""
+    """Shape of the raw ``[tool.must-annotate]`` TOML table."""
 
     exclude: list[str]
     ignore: list[str]
@@ -25,20 +25,20 @@ class _TomlSection(TypedDict, total=False):
 
 
 @dataclass
-class TypestrictConfig:
-    """Resolved typestrict configuration."""
+class MustAnnotateConfig:
+    """Resolved must-annotate configuration."""
 
     DEFAULT_EXCLUDE: ClassVar[tuple[str, ...]] = ("tests/", "migrations/", "conftest.py")
     DEFAULT_IGNORE: ClassVar[tuple[str, ...]] = ("TF005",)
 
-    exclude: list[str] = field(default_factory=lambda: list(TypestrictConfig.DEFAULT_EXCLUDE))
-    ignore: list[str] = field(default_factory=lambda: list(TypestrictConfig.DEFAULT_IGNORE))
+    exclude: list[str] = field(default_factory=lambda: list(MustAnnotateConfig.DEFAULT_EXCLUDE))
+    ignore: list[str] = field(default_factory=lambda: list(MustAnnotateConfig.DEFAULT_IGNORE))
     per_file_ignores: dict[str, list[str]] = field(default_factory=dict)
     strict: bool = False
 
     @classmethod
-    def from_dict(cls, section: _TomlSection) -> TypestrictConfig:
-        """Build a ``TypestrictConfig`` from a raw ``[tool.typestrict]`` mapping."""
+    def from_dict(cls, section: _TomlSection) -> MustAnnotateConfig:
+        """Build a ``MustAnnotateConfig`` from a raw ``[tool.must-annotate]`` mapping."""
         exclude: list[str] = list(section.get("exclude", cls.DEFAULT_EXCLUDE))
         ignore: list[str] = list(section.get("ignore", cls.DEFAULT_IGNORE))
         per_file_ignores: dict[str, list[str]] = dict(section.get("per_file_ignores", {}))
@@ -55,11 +55,11 @@ class TypestrictConfig:
         )
 
     @classmethod
-    def from_pyproject(cls, search_path: Path | None = None) -> TypestrictConfig:
+    def from_pyproject(cls, search_path: Path | None = None) -> MustAnnotateConfig:
         """Load config from the nearest ``pyproject.toml``.
 
         Searches from *search_path* (defaults to cwd) upward until a
-        ``pyproject.toml`` with a ``[tool.typestrict]`` section is found.
+        ``pyproject.toml`` with a ``[tool.must-annotate]`` section is found.
         Returns a default config if none is found or tomllib is unavailable.
         """
         if tomllib is None:
@@ -72,7 +72,7 @@ class TypestrictConfig:
                 try:
                     with candidate.open("rb") as fh:
                         data = tomllib.load(fh)
-                    section: _TomlSection = data.get("tool", {}).get("typestrict", {})
+                    section: _TomlSection = data.get("tool", {}).get("must-annotate", {})
                     return cls.from_dict(section)
                 except Exception:
                     return cls()
@@ -110,6 +110,6 @@ class TypestrictConfig:
             return False
 
 
-def load_config(search_path: Path | None = None) -> TypestrictConfig:
-    """Convenience wrapper around ``TypestrictConfig.from_pyproject``."""
-    return TypestrictConfig.from_pyproject(search_path)
+def load_config(search_path: Path | None = None) -> MustAnnotateConfig:
+    """Convenience wrapper around ``MustAnnotateConfig.from_pyproject``."""
+    return MustAnnotateConfig.from_pyproject(search_path)

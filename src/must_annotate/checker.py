@@ -1,4 +1,4 @@
-"""Main AST visitor that orchestrates all typestrict rules."""
+"""Main AST visitor that orchestrates all must-annotate rules."""
 from __future__ import annotations
 
 import ast
@@ -8,14 +8,14 @@ import tokenize
 from pathlib import Path
 from typing import ClassVar, Sequence
 
-from typestrict.config import TypestrictConfig
-from typestrict.errors import TypestrictError
-from typestrict.rules import RULES
-from typestrict.rules.base import Rule
+from must_annotate.config import MustAnnotateConfig
+from must_annotate.errors import MustAnnotateError
+from must_annotate.rules import RULES
+from must_annotate.rules.base import Rule
 
 
-class TypestrictChecker(ast.NodeVisitor):
-    """Walk an AST and collect all typestrict rule violations.
+class MustAnnotateChecker(ast.NodeVisitor):
+    """Walk an AST and collect all must-annotate rule violations.
 
     Rules are discovered automatically from the ``RULES`` registry.
     The checker builds a dispatch table keyed by AST node type so that
@@ -24,14 +24,14 @@ class TypestrictChecker(ast.NodeVisitor):
     """
 
     _INLINE_IGNORE_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"#\s*typestrict:\s*ignore(?:\[([A-Z0-9,\s]+)\])?"
+        r"#\s*must-annotate:\s*ignore(?:\[([A-Z0-9,\s]+)\])?"
     )
 
     # Instance attribute declarations (assigned in __init__)
     _filename: str
-    _config: TypestrictConfig
+    _config: MustAnnotateConfig
     _selected_rules: frozenset[str] | None
-    _errors: list[TypestrictError]
+    _errors: list[MustAnnotateError]
     _inline_ignores: dict[int, set[str]]
     _scope: "_ScopeStack"
     _dispatch: dict[type[ast.AST], list[Rule]]
@@ -58,18 +58,18 @@ class TypestrictChecker(ast.NodeVisitor):
         self,
         source: str,
         filename: str,
-        config: TypestrictConfig,
+        config: MustAnnotateConfig,
         selected_rules: Sequence[str] | None = None,
         rules: list[Rule] | None = None,
     ) -> None:
         self._filename: str = filename
-        self._config: TypestrictConfig = config
+        self._config: MustAnnotateConfig = config
         self._selected_rules: frozenset[str] | None = (
             frozenset(selected_rules) if selected_rules is not None else None
         )
-        self._errors: list[TypestrictError] = []
+        self._errors: list[MustAnnotateError] = []
         self._inline_ignores: dict[int, set[str]] = self._parse_inline_ignores(source)
-        self._scope: TypestrictChecker._ScopeStack = self._ScopeStack()
+        self._scope: MustAnnotateChecker._ScopeStack = self._ScopeStack()
         self._dispatch: dict[type[ast.AST], list[Rule]] = self._build_dispatch(
             rules if rules is not None else RULES
         )
@@ -78,13 +78,13 @@ class TypestrictChecker(ast.NodeVisitor):
     def from_file(
         cls,
         path: Path,
-        config: TypestrictConfig,
+        config: MustAnnotateConfig,
         selected_rules: Sequence[str] | None = None,
-    ) -> TypestrictChecker:
+    ) -> MustAnnotateChecker:
         """Construct a checker by reading *path* from disk."""
         return cls(path.read_text(encoding="utf-8"), str(path), config, selected_rules)
 
-    def run(self, tree: ast.AST) -> list[TypestrictError]:
+    def run(self, tree: ast.AST) -> list[MustAnnotateError]:
         """Walk *tree* and return all collected errors."""
         self._errors.clear()
         self.visit(tree)
@@ -112,7 +112,7 @@ class TypestrictChecker(ast.NodeVisitor):
         Uses the tokenizer to find only real comment tokens, so patterns
         inside string literals are never matched.
         An empty set means *all* codes are suppressed on that line
-        (bare ``# typestrict: ignore``).
+        (bare ``# must-annotate: ignore``).
         """
         suppressed: dict[int, set[str]] = {}
         try:
@@ -121,7 +121,7 @@ class TypestrictChecker(ast.NodeVisitor):
                 if tok_type != tokenize.COMMENT:
                     continue
                 lineno: int = tok_start[0]
-                match = TypestrictChecker._INLINE_IGNORE_RE.search(tok_string)
+                match = MustAnnotateChecker._INLINE_IGNORE_RE.search(tok_string)
                 if match is None:
                     continue
                 codes_str = match.group(1)
@@ -151,7 +151,7 @@ class TypestrictChecker(ast.NodeVisitor):
             for error in rule.check(node, self._filename):
                 self._record(error)
 
-    def _record(self, error: TypestrictError) -> None:
+    def _record(self, error: MustAnnotateError) -> None:
         """Apply all filters and append the error if it passes."""
         if not self._is_rule_active(error.code):
             return
@@ -174,10 +174,10 @@ class TypestrictChecker(ast.NodeVisitor):
 def check_source(
     source: str,
     filename: str,
-    config: TypestrictConfig,
+    config: MustAnnotateConfig,
     selected_rules: Sequence[str] | None = None,
-) -> list[TypestrictError]:
-    """Parse *source* and return all typestrict errors.
+) -> list[MustAnnotateError]:
+    """Parse *source* and return all must-annotate errors.
 
     This is the primary programmatic API.
     """
@@ -185,7 +185,7 @@ def check_source(
         tree: ast.AST = ast.parse(source, filename=filename)
     except SyntaxError as exc:
         return [
-            TypestrictError(
+            MustAnnotateError(
                 file=filename,
                 line=exc.lineno or 1,
                 col=exc.offset or 0,
@@ -194,20 +194,20 @@ def check_source(
             )
         ]
 
-    return TypestrictChecker(source, filename, config, selected_rules).run(tree)
+    return MustAnnotateChecker(source, filename, config, selected_rules).run(tree)
 
 
 def check_file(
     path: Path,
-    config: TypestrictConfig,
+    config: MustAnnotateConfig,
     selected_rules: Sequence[str] | None = None,
-) -> list[TypestrictError]:
-    """Read *path* from disk and return all typestrict errors."""
+) -> list[MustAnnotateError]:
+    """Read *path* from disk and return all must-annotate errors."""
     try:
         source: str = path.read_text(encoding="utf-8")
     except OSError as exc:
         return [
-            TypestrictError(
+            MustAnnotateError(
                 file=str(path),
                 line=0,
                 col=0,

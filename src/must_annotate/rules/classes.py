@@ -5,8 +5,8 @@ import ast
 from collections.abc import Iterator
 from typing import ClassVar
 
-from typestrict.errors import TypestrictError
-from typestrict.rules.base import Rule
+from must_annotate.errors import MustAnnotateError
+from must_annotate.rules.base import Rule
 
 # Node types that introduce a new scope — we stop descending into these.
 _SCOPE_NODES: tuple[type[ast.AST], ...] = (
@@ -43,9 +43,9 @@ class ClassAnnotationRule(Rule):
     code: ClassVar[str] = "TF004"
     node_types: ClassVar[tuple[type[ast.AST], ...]] = (ast.ClassDef,)
 
-    def check(self, node: ast.AST, filename: str) -> list[TypestrictError]:
+    def check(self, node: ast.AST, filename: str) -> list[MustAnnotateError]:
         assert isinstance(node, ast.ClassDef)
-        errors: list[TypestrictError] = []
+        errors: list[MustAnnotateError] = []
 
         errors.extend(self._check_class_body(node, filename))
 
@@ -59,16 +59,16 @@ class ClassAnnotationRule(Rule):
         self,
         class_node: ast.ClassDef,
         filename: str,
-    ) -> list[TypestrictError]:
+    ) -> list[MustAnnotateError]:
         """Check class-level ``ast.Assign`` statements (not inside methods)."""
-        errors: list[TypestrictError] = []
+        errors: list[MustAnnotateError] = []
 
         for stmt in class_node.body:
             if isinstance(stmt, ast.Assign):
                 for target in stmt.targets:
                     if isinstance(target, ast.Name):
                         errors.append(
-                            TypestrictError(
+                            MustAnnotateError(
                                 file=filename,
                                 line=stmt.lineno,
                                 col=stmt.col_offset,
@@ -82,13 +82,13 @@ class ClassAnnotationRule(Rule):
         self,
         init_node: ast.FunctionDef,
         filename: str,
-    ) -> list[TypestrictError]:
+    ) -> list[MustAnnotateError]:
         """Check ``self.attr = value`` patterns in ``__init__``.
 
         Uses ``_walk_no_nested_scopes`` so that assignments inside nested
         functions/classes are not falsely attributed to this ``__init__``.
         """
-        errors: list[TypestrictError] = []
+        errors: list[MustAnnotateError] = []
         self_name: str | None = _get_self_name(init_node)
         if self_name is None:
             return errors
@@ -103,7 +103,7 @@ class ClassAnnotationRule(Rule):
                     and target.value.id == self_name
                 ):
                     errors.append(
-                        TypestrictError(
+                        MustAnnotateError(
                             file=filename,
                             line=stmt.lineno,
                             col=stmt.col_offset,

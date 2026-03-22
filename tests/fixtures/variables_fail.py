@@ -13,5 +13,5 @@ c: str = "hello"         # ok
 __version__ = "1.0.0"    # ok  – dunder
 __all__ = ["a", "b"]     # ok  – dunder
 _ = some_func()          # ok  – unused-value convention
-data = json.loads(x)     # typestrict: ignore
+data = json.loads(x)     # must-annotate: ignore
 typed: list[int] = []    # ok

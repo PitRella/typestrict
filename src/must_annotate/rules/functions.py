@@ -4,8 +4,8 @@ from __future__ import annotations
 import ast
 from typing import ClassVar
 
-from typestrict.errors import TypestrictError
-from typestrict.rules.base import Rule
+from must_annotate.errors import MustAnnotateError
+from must_annotate.rules.base import Rule
 
 # Names of first arguments that are implicitly typed and should be skipped.
 _IMPLICIT_SELF_NAMES: frozenset[str] = frozenset({"self", "cls"})
@@ -26,9 +26,9 @@ class FunctionAnnotationRule(Rule):
     code: ClassVar[str] = "TF002"  # primary code; TF003 is also emitted
     node_types: ClassVar[tuple[type[ast.AST], ...]] = (ast.FunctionDef, ast.AsyncFunctionDef)
 
-    def check(self, node: ast.AST, filename: str) -> list[TypestrictError]:
+    def check(self, node: ast.AST, filename: str) -> list[MustAnnotateError]:
         assert isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        errors: list[TypestrictError] = []
+        errors: list[MustAnnotateError] = []
 
         # Positional-only args come first, then regular args
         all_args: list[ast.arg] = node.args.posonlyargs + node.args.args
@@ -39,7 +39,7 @@ class FunctionAnnotationRule(Rule):
         for arg in all_args[start_index:]:
             if arg.annotation is None:
                 errors.append(
-                    TypestrictError(
+                    MustAnnotateError(
                         file=filename,
                         line=arg.lineno,
                         col=arg.col_offset,
@@ -52,7 +52,7 @@ class FunctionAnnotationRule(Rule):
         if node.args.vararg is not None and node.args.vararg.annotation is None:
             va = node.args.vararg
             errors.append(
-                TypestrictError(
+                MustAnnotateError(
                     file=filename,
                     line=va.lineno,
                     col=va.col_offset,
@@ -64,7 +64,7 @@ class FunctionAnnotationRule(Rule):
         if node.args.kwarg is not None and node.args.kwarg.annotation is None:
             kw = node.args.kwarg
             errors.append(
-                TypestrictError(
+                MustAnnotateError(
                     file=filename,
                     line=kw.lineno,
                     col=kw.col_offset,
@@ -77,7 +77,7 @@ class FunctionAnnotationRule(Rule):
         for kwonly_arg in node.args.kwonlyargs:
             if kwonly_arg.annotation is None:
                 errors.append(
-                    TypestrictError(
+                    MustAnnotateError(
                         file=filename,
                         line=kwonly_arg.lineno,
                         col=kwonly_arg.col_offset,
@@ -89,7 +89,7 @@ class FunctionAnnotationRule(Rule):
         # TF003 – return annotation
         if node.returns is None:
             errors.append(
-                TypestrictError(
+                MustAnnotateError(
                     file=filename,
                     line=node.lineno,
                     col=node.col_offset,

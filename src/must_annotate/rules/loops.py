@@ -1,15 +1,15 @@
 """TF005 – loop/context-manager variables without type annotations.
 
 This rule is **disabled by default**.  Enable it via ``strict = true`` or by
-removing ``TF005`` from the ``ignore`` list in ``[tool.typestrict]``.
+removing ``TF005`` from the ``ignore`` list in ``[tool.must-annotate]``.
 """
 from __future__ import annotations
 
 import ast
 from typing import ClassVar
 
-from typestrict.errors import TypestrictError
-from typestrict.rules.base import Rule
+from must_annotate.errors import MustAnnotateError
+from must_annotate.rules.base import Rule
 
 
 def _target_names(target: ast.expr) -> list[str]:
@@ -32,13 +32,13 @@ class LoopAnnotationRule(Rule):
         ast.For, ast.AsyncFor, ast.With, ast.AsyncWith
     )
 
-    def check(self, node: ast.AST, filename: str) -> list[TypestrictError]:
+    def check(self, node: ast.AST, filename: str) -> list[MustAnnotateError]:
         assert isinstance(node, (ast.For, ast.AsyncFor, ast.With, ast.AsyncWith))
         if isinstance(node, (ast.For, ast.AsyncFor)):
             return self._check_for(node, filename)
         return self._check_with(node, filename)
 
-    def _check_for(self, node: ast.For | ast.AsyncFor, filename: str) -> list[TypestrictError]:
+    def _check_for(self, node: ast.For | ast.AsyncFor, filename: str) -> list[MustAnnotateError]:
         """Check ``for <target> in …`` for TF005 violations.
 
         Because Python's ``for`` loop syntax does not support inline
@@ -46,12 +46,12 @@ class LoopAnnotationRule(Rule):
         variable is flagged. The rule is opt-in for teams that use the
         ``# type: …`` comment convention.
         """
-        errors: list[TypestrictError] = []
+        errors: list[MustAnnotateError] = []
         for name in _target_names(node.target):
             if name == "_":
                 continue
             errors.append(
-                TypestrictError(
+                MustAnnotateError(
                     file=filename,
                     line=node.lineno,
                     col=node.col_offset,
@@ -61,9 +61,9 @@ class LoopAnnotationRule(Rule):
             )
         return errors
 
-    def _check_with(self, node: ast.With | ast.AsyncWith, filename: str) -> list[TypestrictError]:
+    def _check_with(self, node: ast.With | ast.AsyncWith, filename: str) -> list[MustAnnotateError]:
         """Check ``with … as <target>`` for TF005 violations."""
-        errors: list[TypestrictError] = []
+        errors: list[MustAnnotateError] = []
         for item in node.items:
             if item.optional_vars is None:
                 continue
@@ -71,7 +71,7 @@ class LoopAnnotationRule(Rule):
                 if name == "_":
                     continue
                 errors.append(
-                    TypestrictError(
+                    MustAnnotateError(
                         file=filename,
                         line=node.lineno,
                         col=node.col_offset,

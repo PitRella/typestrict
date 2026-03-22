@@ -1,15 +1,15 @@
-"""Abstract base class for all typestrict rules."""
+"""Abstract base class for all must-annotate rules."""
 from __future__ import annotations
 
 import ast
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from typestrict.errors import TypestrictError
+from must_annotate.errors import MustAnnotateError
 
 
 class Rule(ABC):
-    """Base class for a single typestrict rule.
+    """Base class for a single must-annotate rule.
 
     Subclasses must declare:
     - ``code``       – the rule code, e.g. ``"TF001"``
@@ -28,5 +28,5 @@ class Rule(ABC):
     skip_in_class_body: ClassVar[bool] = False
 
     @abstractmethod
-    def check(self, node: ast.AST, filename: str) -> list[TypestrictError]:
+    def check(self, node: ast.AST, filename: str) -> list[MustAnnotateError]:
         """Check *node* and return any violations found."""

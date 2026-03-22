@@ -4,8 +4,8 @@ from __future__ import annotations
 import ast
 from typing import ClassVar
 
-from typestrict.errors import TypestrictError
-from typestrict.rules.base import Rule
+from must_annotate.errors import MustAnnotateError
+from must_annotate.rules.base import Rule
 
 _DUNDER_PREFIX: str = "__"
 
@@ -41,16 +41,16 @@ class VariableAnnotationRule(Rule):
     node_types: ClassVar[tuple[type[ast.AST], ...]] = (ast.Assign,)
     skip_in_class_body: ClassVar[bool] = True
 
-    def check(self, node: ast.AST, filename: str) -> list[TypestrictError]:
+    def check(self, node: ast.AST, filename: str) -> list[MustAnnotateError]:
         assert isinstance(node, ast.Assign)
-        errors: list[TypestrictError] = []
+        errors: list[MustAnnotateError] = []
 
         for target in node.targets:
             for name in _collect_names(target):
                 if name == "_" or _is_dunder_name(name):
                     continue
                 errors.append(
-                    TypestrictError(
+                    MustAnnotateError(
                         file=filename,
                         line=node.lineno,
                         col=node.col_offset,
