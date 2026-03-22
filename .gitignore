@@ -44,4 +44,4 @@ poetry.lock
 # Misc
 *.log
 testik.py
-typestrict_prompt.md
+typeforce_prompt.md

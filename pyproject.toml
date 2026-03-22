@@ -39,9 +39,9 @@ dev = [
 must-annotate = "must_annotate.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/PitRella/typestrict"
-Repository = "https://github.com/PitRella/typestrict"
-Issues = "https://github.com/PitRella/typestrict/issues"
+Homepage = "https://github.com/PitRella/must-annotate"
+Repository = "https://github.com/PitRella/must-annotate"
+Issues = "https://github.com/PitRella/must-annotate/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/must_annotate"]
